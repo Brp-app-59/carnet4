@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Entraînement ADJAENES</title>
+<style>
+:root{--bg:#F7F6F2;--surface:#fff;--border:#E2E0D8;--text:#1A1A18;--muted:#6B6B66;--accent:#2D5BE3;--accent-light:#EBF0FD;--success:#1A6B3C;--success-bg:#E8F5EE;--danger:#B91C1C;--danger-bg:#FEF2F2;--r:10px;--rs:6px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px;line-height:1.6}
+.app{max-width:700px;margin:0 auto;padding:24px 16px 60px}
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px}
+.logo{font-size:20px;font-weight:700;letter-spacing:-0.5px}
+.logo span{color:var(--accent)}
+.score-row{display:flex;gap:8px}
+.pill{font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px;background:var(--surface);border:1px solid var(--border);color:var(--muted)}
+.pill.streak{background:#FFFBEB;color:#92400E;border-color:#FCD34D}
+.themes{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px}
+.tbtn{font-size:12px;font-weight:500;padding:6px 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer;transition:all .15s}
+.tbtn:hover{border-color:var(--accent);color:var(--accent)}
+.tbtn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.pw{background:var(--border);border-radius:4px;height:4px;margin-bottom:20px;overflow:hidden}
+.pb{height:4px;background:var(--accent);border-radius:4px;transition:width .4s ease}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:24px;margin-bottom:16px}
+.qm{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:12px}
+.qt{font-size:16px;line-height:1.7;color:var(--text);margin-bottom:20px;font-weight:500}
+.opts{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.opt{padding:12px 16px;border:1px solid var(--border);border-radius:var(--rs);cursor:pointer;font-size:14px;color:var(--text);background:var(--bg);text-align:left;transition:all .15s;font-family:inherit}
+.opt:hover:not(:disabled){border-color:var(--accent);background:var(--accent-light);color:var(--accent)}
+.opt.ok{border-color:var(--success);background:var(--success-bg);color:var(--success);font-weight:600}
+.opt.ko{border-color:var(--danger);background:var(--danger-bg);color:var(--danger)}
+.fr{display:flex;gap:8px;margin-bottom:12px}
+.fr input{flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:var(--rs);font-size:14px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;transition:border-color .15s}
+.fr input:focus{border-color:var(--accent);background:#fff}
+.fr input.ok{border-color:var(--success);background:var(--success-bg);color:var(--success)}
+.fr input.ko{border-color:var(--danger);background:var(--danger-bg);color:var(--danger)}
+.btn{padding:10px 18px;border-radius:var(--rs);border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;transition:all .15s}
+.btn:hover{background:var(--bg)}
+.btn.p{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn.p:hover{background:#1e4bc0}
+.fb{padding:12px 16px;border-radius:var(--rs);font-size:13px;line-height:1.6;margin-bottom:16px;display:none}
+.fb.ok{background:var(--success-bg);color:var(--success);border:1px solid #86EFAC}
+.fb.ko{background:var(--danger-bg);color:var(--danger);border:1px solid #FCA5A5}
+.fb .rl{display:block;margin-top:6px;font-size:12px;font-style:italic;opacity:.85}
+.br{display:flex;gap:8px;flex-wrap:wrap}
+.rg{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}
+.st{background:var(--bg);border-radius:var(--rs);padding:14px;text-align:center;border:1px solid var(--border)}
+.sn{font-size:28px;font-weight:700;color:var(--accent)}
+.sl{font-size:11px;color:var(--muted);margin-top:2px;font-weight:500}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+<div class="logo">Entraînement <span>ADJAENES</span></div>
+<div class="score-row">
+<span class="pill" id="sp">✓ 0 / 0</span>
+<span class="pill streak" id="sk">🔥 0</span>
+</div>
+</header>
+<div class="themes" id="th"></div>
+<div class="pw"><div class="pb" id="pb" style="width:0%"></div></div>
+<div id="main"></div>
+</div>
+<script>
+const TH=[
+  {id:'pp',l:'Participes passés'},
+  {id:'or',l:'-é / -er / -ez'},
+  {id:'vo',l:'Vocabulaire'},
+  {id:'gr',l:'Grammaire'},
+  {id:'fa',l:'Fautes à corriger'},
+  {id:'mq',l:'Maths QCM'},
+  {id:'mc',l:'Maths Calculs'},
+  {id:'mp',l:'Pourcentages'}
+];
+
+// Fonction de normalisation STRICTE : uniquement accents et casse
+function norm(s){
+  return s.toString().trim()
+    .toLowerCase()
+    .replace(/[éèêë]/g,'e')
+    .replace(/[àâä]/g,'a')
+    .replace(/[îï]/g,'i')
+    .replace(/[ôö]/g,'o')
+    .replace(/[ùûü]/g,'u')
+    .replace(/ç/g,'c')
+    .replace(/['\u2019\u2018]/g,"'")
+    .replace(/\s+/g,' ')
+    .trim();
+}
+
+// Comparaison stricte pour le texte, souple uniquement pour les nombres
+function checkAnswer(userRaw, correctRaw){
+  // Les réponses acceptées sont séparées par " | "
+  const accepted = correctRaw.split('|').map(a => a.trim());
+  const userN = norm(userRaw);
+
+  for(const a of accepted){
+    // Pour les réponses numériques pures : comparer les valeurs
+    const aNum = parseFloat(a.replace(',','.').replace(/[^0-9.\-]/g,''));
+    const uNum = parseFloat(userN.replace(',','.').replace(/[^0-9.\-]/g,''));
+    if(!isNaN(aNum) && !isNaN(uNum) && a.replace(/[^0-9.\-]/g,'') === a.replace(/\s/g,'') && userN.replace(/[^0-9.\-]/g,'') === userN.replace(/\s/g,'')){
+      if(Math.abs(aNum - uNum) < 0.01) return true;
+    }
+    // Pour le texte : comparaison normalisée stricte
+    if(norm(a) === userN) return true;
+  }
+  return false;
+}
+
+const Q={
+pp:[
+  {q:"Les lettres qu'il a <em>(envoyer)</em> _____ sont arrivées hier.",t:'f',a:'envoyées',r:"COD 'les lettres' (fém. pl.) placé avant avoir → accord en genre et nombre"},
+  {q:"Elle s'est <em>(lever)</em> _____ tôt ce matin.",t:'f',a:'levée',r:"Verbe pronominal, sujet féminin singulier → accord"},
+  {q:"Quelles décisions avez-vous <em>(prendre)</em> _____ ?",t:'f',a:'prises',r:"COD 'quelles décisions' (fém. pl.) avant avoir → accord"},
+  {q:"La réunion que nous avons <em>(organiser)</em> _____ s'est bien passée.",t:'f',a:'organisée',r:"COD 'que' = 'la réunion' (fém. sing.) avant avoir → accord"},
+  {q:"Ils se sont <em>(téléphoner)</em> _____ hier soir.",t:'f',a:'téléphoné',r:"'Téléphoner à' est intransitif indirect → pas d'accord possible"},
+  {q:"Les dossiers que j'ai <em>(classer)</em> _____ sont sur le bureau.",t:'f',a:'classés',r:"COD 'que' = 'les dossiers' (masc. pl.) avant avoir → accord"},
+  {q:"J'ai <em>(classer)</em> _____ les dossiers ce matin.",t:'f',a:'classé',r:"COD 'les dossiers' placé APRÈS le verbe → pas d'accord"},
+  {q:"La note qu'elle a <em>(rédiger)</em> _____ est très claire.",t:'f',a:'rédigée',r:"COD 'que' = 'la note' (fém. sing.) avant avoir → accord"},
+  {q:"Nos lettres se sont <em>(croiser)</em> _____.",t:'f',a:'croisées',r:"Pronominal réciproque, sujet fém. pl., transitif direct → accord"},
+  {q:"Elles se sont <em>(lire)</em> _____ des lettres.",t:'f',a:'lu',r:"COD 'des lettres' placé après → pas d'accord"},
+  {q:"Julie a <em>(poster)</em> _____ trois lettres.",t:'f',a:'posté',r:"COD 'trois lettres' placé APRÈS le verbe → pas d'accord"},
+  {q:"Quelles lettres a-t-elle <em>(poster)</em> _____ ?",t:'f',a:'postées',r:"COD 'quelles lettres' (fém. pl.) avant avoir → accord"},
+  {q:"J'ai classé toutes les cartes que j'ai <em>(recevoir)</em> _____.",t:'f',a:'reçues',r:"COD 'que' = 'les cartes' (fém. pl.) avant avoir → accord"},
+  {q:"La caissière lui a <em>(rendre)</em> _____ la monnaie.",t:'f',a:'rendu',r:"COD 'la monnaie' placé APRÈS avoir → pas d'accord"},
+  {q:"Vous avez parfaitement <em>(comprendre)</em> _____ la règle.",t:'f',a:'compris',r:"COD 'la règle' placé APRÈS avoir → pas d'accord"},
+  {q:"Je les ai souvent <em>(entendre)</em> _____.",t:'f',a:'entendues',r:"'les' = pronom fém. pl. placé avant avoir → accord : entendues"},
+  {q:"Voici les suggestions que j'ai <em>(retenir)</em> _____.",t:'f',a:'retenues',r:"COD 'que' = 'les suggestions' (fém. pl.) avant avoir → accord"},
+  {q:"Bien des années ont <em>(passer)</em> _____ ainsi.",t:'f',a:'passé',r:"'Passer' intransitif ici → pas de COD → PP invariable"},
+  {q:"Elle s'est <em>(souvenir)</em> _____ de toi.",t:'f',a:'souvenue',r:"'Se souvenir' toujours pronominal → accord avec le sujet fém. → souvenue"},
+  {q:"Les erreurs qu'il a <em>(faire)</em> _____ sont nombreuses.",t:'f',a:'faites',r:"COD 'que' = 'les erreurs' (fém. pl.) avant avoir → accord"},
+  {q:"Ils se sont <em>(battre)</em> _____ courageusement.",t:'f',a:'battus',r:"Pronominal réciproque, sujet masc. pl. → accord"},
+  {q:"La décision qu'elle a <em>(prendre)</em> _____ est courageuse.",t:'f',a:'prise',r:"COD 'que' = 'la décision' (fém. sing.) avant avoir → accord"},
+  {q:"Ils se sont <em>(plaire)</em> _____ à Paris.",t:'f',a:'plu',r:"'Plaire à' est intransitif indirect → PP invariable"},
+  {q:"Les fenêtres que tu as <em>(ouvrir)</em> _____ laissent entrer l'air.",t:'f',a:'ouvertes',r:"COD 'que' = 'les fenêtres' (fém. pl.) avant avoir → accord"},
+  {q:"Elle s'est <em>(faire)</em> _____ mal.",t:'f',a:'fait',r:"'Se faire' + infinitif sous-entendu → PP toujours invariable"},
+  {q:"Les candidates ont été <em>(sélectionner)</em> _____.",t:'f',a:'sélectionnées',r:"Voix passive → PP accordé avec le sujet 'les candidates' (fém. pl.)"},
+  {q:"Nous nous sommes <em>(arrêter)</em> _____ en chemin.",t:'f',a:'arrêtés',r:"Pronominal, sujet 'nous' masc. pl. → accord"},
+  {q:"Elle a <em>(ouvrir)</em> _____ la fenêtre.",t:'f',a:'ouvert',r:"COD 'la fenêtre' placé APRÈS avoir → pas d'accord"},
+  {q:"Les livres qu'il a <em>(lire)</em> _____ sont passionnants.",t:'f',a:'lus',r:"COD 'que' = 'les livres' (masc. pl.) avant avoir → accord"},
+  {q:"Elles se sont <em>(écrire)</em> _____ pendant des années.",t:'f',a:'écrit',r:"'S'écrire l'une à l'autre' = intransitif indirect → PP invariable"}
+],
+or:[
+  {q:"Il faut _____ ce document avant de l'envoyer. (valider ou validé ?)",t:'q',o:['valider','validé','validez'],a:'valider',r:"Après 'il faut' → toujours l'infinitif (-er). Test : 'il faut vendre' ✓"},
+  {q:"Le dossier a été _____ hier. (classer ou classé ?)",t:'q',o:['classer','classé','classez'],a:'classé',r:"Après 'être' conjugué → participe passé (-é)"},
+  {q:"Avant de _____, vérifiez vos affaires.",t:'q',o:['partir','parti','partez'],a:'partir',r:"Après 'avant de' → infinitif toujours"},
+  {q:"Le travail est _____.",t:'q',o:['terminer','terminé','terminez'],a:'terminé',r:"Après 'est' → participe passé (-é)"},
+  {q:"Il faut _____ avant 17h.",t:'q',o:['terminer','terminé','terminez'],a:'terminer',r:"Après 'il faut' → infinitif (-er)"},
+  {q:"Elle regard_____ les candidats passer.",t:'q',o:['-ait (regardait)','-é (regardé)','-er (regarder)'],a:'-ait (regardait)',r:"Imparfait = -ait. Test : 'elle vendait' ✓"},
+  {q:"Vous devez continu_____ à travailler.",t:'q',o:['-er (continuer)','-ez (continuez)','-é (continué)'],a:'-er (continuer)',r:"Après 'devez' → infinitif (-er)"},
+  {q:"Permett_____ – moi de vous prêter ce livre.",t:'q',o:['Permettez','Permetté','Permettre'],a:'Permettez',r:"Impératif s'adressant à 'vous' → -ez"},
+  {q:"Il av_____ refus_____ de se dénoncer.",t:'q',o:['avait / refusé','-ait / -er','-é / -é'],a:'avait / refusé',r:"Imparfait de 'avoir' (-ait) + participe passé (-é)"},
+  {q:"Perd_____ -ils la tête ?",t:'q',o:['Perdaient','-ez','-ait'],a:'Perdaient',r:"Imparfait 3e pers. pl. = -aient"},
+  {q:"Son oncle le regard_____ dîner sans parl_____.",t:'q',o:['regardait / parler','regardé / parlé','regarder / parler'],a:'regardait / parler',r:"Imparfait (-ait) + infinitif après 'sans' (-er)"},
+  {q:"Il vous a confi_____ ses clefs.",t:'q',o:['confié','confier','confiez'],a:'confié',r:"Passé composé → participe passé (-é)"},
+  {q:"C'ét_____ sa manière de vous souhait_____ le bonjour.",t:'q',o:["C'était / souhaiter","C'était / souhaité","C'étais / souhaiter"],a:"C'était / souhaiter",r:"Imparfait (-ait) + infinitif après 'de' (-er)"},
+  {q:"Elle a achet_____ ce livre la semaine dernière.",t:'q',o:['acheté','acheter','achetez'],a:'acheté',r:"Passé composé → participe passé (-é)"},
+  {q:"Vous av_____ pos_____ de quoi amuser le bébé.",t:'q',o:['avez / posé','aviez / posé','avez / poser'],a:'avez / posé',r:"Passé composé avec 'vous' = avez + participe passé"},
+  {q:"Les agents désir_____ dress_____ leur tente dans le champ.",t:'q',o:['désiraient / dresser','désiraient / dressé','désirés / dresser'],a:'désiraient / dresser',r:"Imparfait (-aient) + infinitif (-er)"},
+  {q:"Chaque fois qu'il approch_____, il vous fix_____.",t:'q',o:['approchait / fixait','approché / fixé','approcher / fixer'],a:'approchait / fixait',r:"Imparfait pour une habitude passée = -ait"},
+  {q:"Je rest_____ plutôt fig_____, les mains cach_____ dans les poches.",t:'q',o:['restais / figé / cachées','restais / figée / caché','restai / figé / cacher'],a:'restais / figé / cachées',r:"Imparfait (-ais) + PP accordés : figé (masc.) / cachées (fém. pl.)"},
+  {q:"« Est-ce que vous voul_____ me parl_____ ? »",t:'q',o:['voulez / parler','vouliez / parler','voulez / parlé'],a:'voulez / parler',r:"Présent (-ez s'adressant à vous) + infinitif (-er)"},
+  {q:"Il faudr_____ vérifi_____ ce dossier avant de l'envo_____.",t:'q',o:['faudra / vérifier / envoyer','faudra / vérifiez / envoyer','faudra / vérifier / envoyé'],a:'faudra / vérifier / envoyer',r:"Futur simple + infinitif + infinitif après 'avant de'"}
+],
+vo:[
+  {q:"Quel est l'antonyme de 'distrait' ?",t:'q',o:['attentif','curieux','lent','maladroit'],a:'attentif',r:"Distrait = qui ne fait pas attention ≠ attentif"},
+  {q:"Quel est l'antonyme de 'futiles' ?",t:'q',o:['essentiels','longs','rares','bruyants'],a:'essentiels',r:"Futile = sans importance ≠ essentiel"},
+  {q:"Quel est l'antonyme de 'divergentes' ?",t:'q',o:['convergentes','similaires','opposées','éloignées'],a:'convergentes',r:"Diverger (s'éloigner) ≠ converger (se rapprocher)"},
+  {q:"Quel est l'antonyme de 'licencier' ?",t:'q',o:['embaucher','payer','former','muter'],a:'embaucher',r:"Licencier = renvoyer un salarié ≠ embaucher"},
+  {q:"Quel est l'antonyme de 'aléatoire' ?",t:'q',o:['certain','rapide','facile','nouveau'],a:'certain',r:"Aléatoire = soumis au hasard ≠ certain"},
+  {q:"Remplacez 'faire' : 'Je n'arrive pas à faire ce problème.'",t:'q',o:['résoudre','créer','lire','trouver'],a:'résoudre',r:"Faire un problème → résoudre un problème"},
+  {q:"Remplacez 'dit' : 'Le règlement dit que le port de jeans est interdit.'",t:'q',o:['stipule','crie','demande','pense'],a:'stipule',r:"Un règlement stipule (formule par écrit de manière officielle)"},
+  {q:"Remplacez 'dit' : 'Le témoin a dit qu'il n'avait rien vu.'",t:'q',o:['déclaré','crié','murmuré','répété'],a:'déclaré',r:"Un témoin déclare lors d'un procès"},
+  {q:"Adjectif pour 'dont rien ne vient troubler la paix' ?",t:'q',o:['paisible','joyeux','bruyant','animé'],a:'paisible',r:"Paisible = calme, tranquille"},
+  {q:"'Garder la tête sur les épaules' signifie :",t:'q',o:['rester raisonnable','être têtu','avoir mal au cou','être fier'],a:'rester raisonnable',r:"Sens figuré → rester sensé, lucide, raisonnable"},
+  {q:"'Casser la tête de quelqu'un' signifie :",t:'q',o:['importuner','blesser','aider','impressionner'],a:'importuner',r:"Casser la tête = ennuyer, fatiguer par ses bavardages"},
+  {q:"'Avoir la grosse tête' signifie :",t:'q',o:['être prétentieux','être intelligent','avoir mal à la tête','travailler dur'],a:'être prétentieux',r:"Grosse tête = vaniteux, qui se croit supérieur aux autres"},
+  {q:"Antonyme de 'la sympathie' ?",t:'q',o:["l'antipathie","la timidité","l'indifférence","la colère"],a:"l'antipathie",r:"Sympathie ≠ antipathie (sentiment négatif envers quelqu'un)"},
+  {q:"Antonyme de 'la victoire' ?",t:'q',o:['la défaite',"l'absence","le match","l'abandon"],a:'la défaite',r:"Victoire ≠ défaite"},
+  {q:"'Effraction' ou 'infraction' ? — Le cambrioleur a pénétré par _____ dans l'appartement.",t:'q',o:['effraction','infraction'],a:'effraction',r:"Effraction = forcer une serrure / briser une clôture pour entrer"},
+  {q:"'Effraction' ou 'infraction' ? — Ce véhicule est en _____ de stationnement.",t:'q',o:['infraction','effraction'],a:'infraction',r:"Infraction = violation d'une règle ou d'une loi"},
+  {q:"'Dénouement' ou 'dénuement' ? — Ces malheureux sont dans le plus complet _____.",t:'q',o:['dénuement','dénouement'],a:'dénuement',r:"Dénuement = extrême pauvreté / misère"},
+  {q:"'Aveuglément' ou 'aveuglement' ? — Vous suivez _____ les instructions.",t:'q',o:['aveuglément','aveuglement'],a:'aveuglément',r:"Aveuglément (adverbe) = sans réfléchir / aveuglément"},
+  {q:"'Réfection' ou 'réflexion' ? — La _____ de la façade a embelli l'immeuble.",t:'q',o:['réfection','réflexion'],a:'réfection',r:"Réfection = travaux de remise en état"},
+  {q:"Adjectif pour 'très savante' — Laura est une personne _____.",t:'q',o:['érudite','studieuse','curieuse','sérieuse'],a:'érudite',r:"Érudite = très cultivée, très instruite"},
+  {q:"'Cet enfant a un cœur de pierre' signifie :",t:'q',o:['il est insensible','il est courageux','il est fort','il est triste'],a:'il est insensible',r:"Cœur de pierre = sans émotions, froid, dur"},
+  {q:"'Elle était sur un petit nuage' signifie :",t:'q',o:['elle était très heureuse','elle était fatiguée','elle rêvait','elle était distraite'],a:'elle était très heureuse',r:"Sur un petit nuage = dans un état de bonheur intense"},
+  {q:"'Ce spectacle m'a coupé le souffle' signifie :",t:'q',o:["m'a stupéfait","m'a fatigué","m'a ennuyé","m'a fait rire"],a:"m'a stupéfait",r:"Couper le souffle = provoquer un vif étonnement"},
+  {q:"'Elle a acheté sa maison pour une bouchée de pain' signifie :",t:'q',o:['à très bas prix','en échange de nourriture','rapidement','sans effort'],a:'à très bas prix',r:"Pour une bouchée de pain = pour presque rien"},
+  {q:"Antonyme de 'un professionnel' ?",t:'q',o:['un amateur','un étudiant','un débutant','un apprenti'],a:'un amateur',r:"Professionnel (expert rémunéré) ≠ amateur"},
+  {q:"Antonyme de 'l'intelligence' ?",t:'q',o:['la bêtise','la lenteur','la paresse','la colère'],a:'la bêtise',r:"Intelligence ≠ bêtise, stupidité"},
+  {q:"Antonyme de 'la guerre' ?",t:'q',o:['la paix','la trêve','le conflit','la bataille'],a:'la paix',r:"Guerre ≠ paix"},
+  {q:"Antonyme de 'joyeux' ?",t:'q',o:['triste','calme','fatigué','sérieux'],a:'triste',r:"Joyeux ≠ triste"},
+  {q:"Adjectif pour 'qui consomme beaucoup d'énergie' ?",t:'q',o:['énergivore','puissant','moderne','coûteux'],a:'énergivore',r:"Énergivore = qui consomme beaucoup d'énergie"},
+  {q:"Synonyme expressif de 'dire' son texte sur scène ?",t:'q',o:['déclamer','lire','chuchoter','crier'],a:'déclamer',r:"Un comédien déclame (récite avec emphase) son texte"}
+],
+gr:[
+  {q:"Corrigez le verbe : 'Voici ce que demande avec insistance les candidats admissibles.'",t:'f',a:'demandent',r:"Sujet réel = 'les candidats' (pl.) → demandent"},
+  {q:"Corrigez le verbe : 'C'est bien moi qui occupera ce poste l'année prochaine.'",t:'f',a:'occuperai',r:"'C'est moi qui' → accord avec 'je' → 1re pers. sing. → occuperai"},
+  {q:"Corrigez le verbe : 'Pierre et toi apprécie ce type de formation.'",t:'f',a:'appréciez',r:"Pierre + toi = vous deux → 2e pers. pl. → appréciez"},
+  {q:"Corrigez le verbe : 'L'ensemble des agents ont été informés de la décision.'",t:'f',a:'a été',r:"'L'ensemble de' = collectif singulier → a été"},
+  {q:"Corrigez le verbe : 'Toi qui est responsable du dossier, transmets-le.'",t:'f',a:'es',r:"'Toi qui' → accord avec 'tu' → 2e pers. sing. → es"},
+  {q:"Corrigez le verbe : 'Les nouvelles du sport ? Voilà tout ce qui les intéressent dans le journal.'",t:'f',a:'intéresse',r:"Sujet de 'intéresser' = 'tout' (sing.) → intéresse"},
+  {q:"Choisissez : '_____ soit son mobile, son acte est impardonnable.'",t:'q',o:['Quel que','Quelle que','Quelque','Quelques'],a:'Quel que',r:"'Mobile' masc. sing. + être au subjonctif → quel que"},
+  {q:"Choisissez : 'J'ai ramené _____ photos intéressantes de mon voyage.'",t:'q',o:['quelques','quelque','quel que','quelle que'],a:'quelques',r:"Quelques = un petit nombre de (déterminant pluriel)"},
+  {q:"Choisissez : 'Ils sortent, _____ soit le temps.'",t:'q',o:['quel que','quelque','quelques','quelle que'],a:'quel que',r:"'Le temps' masc. sing. + subjonctif → quel que"},
+  {q:"Corrigez le verbe : 'Charles, son frère et moi participent tous les mois à une randonnée.'",t:'f',a:'participons',r:"Charles + son frère + moi = nous → 1re pers. pl. → participons"},
+  {q:"Corrigez le verbe : 'Dans cet hôtel séjourne régulièrement de grandes célébrités américaines.'",t:'f',a:'séjournent',r:"Sujet inversé = 'de grandes célébrités' (pl.) → séjournent"},
+  {q:"Mettez à la voix passive : 'L'élève remplit un cahier de vacances.'",t:'f',a:"Un cahier de vacances est rempli par l'élève.",r:"COD → sujet au passif + être + PP + par + ancien sujet"},
+  {q:"Mettez à la voix passive : 'Le chat a cassé le vase.'",t:'f',a:"Le vase a été cassé par le chat.",r:"Passé composé passif : a été + PP accordé avec le nouveau sujet"},
+  {q:"Conjuguez au passé composé : 'ouvrir' — Elle _____ la fenêtre.",t:'f',a:'a ouvert',r:"Passé composé de 'ouvrir' avec avoir = a ouvert"},
+  {q:"Conjuguez au plus-que-parfait : 'oublier' — Nous _____ notre argent.",t:'f',a:'avions oublié',r:"Plus-que-parfait = imparfait de avoir + PP → avions oublié"},
+  {q:"Conjuguez au conditionnel présent : 'remarquer' — Personne ne _____ son geste.",t:'f',a:'remarquerait',r:"Conditionnel présent : radical futur + terminaison imparfait (-ait)"},
+  {q:"Conjuguez au futur antérieur : 'terminer' — Lorsque vous lirez ceci, nous _____ notre travail.",t:'f',a:'aurons terminé',r:"Futur antérieur = futur simple de avoir + PP → aurons terminé"},
+  {q:"Choisissez : 'Toutes les idées seront étudiées, _____ elles soient.'",t:'q',o:['quelles que','quel que','quelques','quelque'],a:'quelles que',r:"'Elles' = fém. pl. → quelles que (accord en genre et nombre)"},
+  {q:"Corrigez le verbe : 'L'enfant indique les nuages qui, au-dessus de l'horizon, forme une boule de coton.'",t:'f',a:'forment',r:"Sujet = 'les nuages' (pl.) → forment"},
+  {q:"Mettez à la voix passive : 'Le comptable paie les factures de l'entreprise.'",t:'f',a:"Les factures de l'entreprise sont payées par le comptable.",r:"COD 'les factures' → sujet au passif, accord du PP"},
+  {q:"Corrigez le verbe : 'Toi qui est spécialiste du jardinage, donne-moi des conseils.'",t:'f',a:'es',r:"'Toi qui' → accord avec 'tu' → 2e pers. sing. → es"},
+  {q:"Conjuguez au futur simple : 'lire' — Lorsque vous _____ ceci.",t:'f',a:'lirez',r:"Futur simple de 'lire' = lirez"},
+  {q:"Corrigez : 'La méthode que lui apprends l'ensemble de ses enseignants.'",t:'f',a:'apprend',r:"'L'ensemble de ses enseignants' = collectif sing. → apprend"},
+  {q:"Choisissez : 'Toutes les nouvelles idées seront étudiées, _____ qu'elles soient.'",t:'q',o:['quelles','quel','quelque','quelques'],a:'quelles',r:"'Quelles que' → accord fém. pl. avec 'idées'"},
+  {q:"Corrigez : 'Pierre et toi apprécie les spectacles musicaux.'",t:'f',a:'appréciez',r:"Pierre + toi = vous → 2e pers. pl. → appréciez"}
+],
+fa:[
+  {q:"Trouvez et corrigez la faute : 'Le service est chargé de géré les carrières.'",t:'q',o:['géré → gérer','chargé → chargés','service → services','carrières → carrière'],a:'géré → gérer',r:"Après 'chargé de' → infinitif (-er). Test : 'chargé de vendre' ✓"},
+  {q:"Trouvez et corrigez la faute : 'Il garanti le respect des règles.'",t:'q',o:['garanti → garantit','respect → respects','règles → règle','Il → Elle'],a:'garanti → garantit',r:"Présent 3e pers. sing. de 'garantir' = garantit (avec t final)"},
+  {q:"Trouvez et corrigez la faute : 'Les agents qui doive contacter ce service.'",t:'q',o:['doive → doivent','agents → agent','service → services','contacter → contact'],a:'doive → doivent',r:"Sujet 'les agents' (pl.) → doivent (présent indicatif)"},
+  {q:"Trouvez et corrigez la faute : 'Les dossiers incomplet sont traités dans un délai.'",t:'q',o:['incomplet → incomplets','dossiers → dossier','traités → traité','délai → délais'],a:'incomplet → incomplets',r:"Accord avec 'dossiers' (masc. pl.) → incomplets"},
+  {q:"Trouvez et corrigez la faute : 'Traitement effectué dans un délais de deux semaines.'",t:'q',o:['délais → délai','deux → deuxième','semaines → semaine','dans → en'],a:'délais → délai',r:"'Un délai' est singulier ici — pas de s"},
+  {q:"Trouvez et corrigez la faute : 'La Justice est l'une des grandes fonction régaliennes assurées par l'État.'",t:'q',o:['fonction → fonctions','grandes → grand','assurées → assurée','État → état'],a:'fonction → fonctions',r:"'Des grandes fonctions' → pluriel requis"},
+  {q:"Trouvez et corrigez la faute : 'Elle est administrer par le ministère de la Justice.'",t:'q',o:['administrer → administrée','ministère → Ministère','elle → il','est → sont'],a:'administrer → administrée',r:"Voix passive : être + PP accordé → administrée (fém. sing.)"},
+  {q:"Trouvez et corrigez la faute : 'La procédure pénal est en cours.'",t:'q',o:['pénal → pénale','procédure → procédures','La → Le','cours → cour'],a:'pénal → pénale',r:"'Procédure' est féminin → adjectif accordé → pénale"},
+  {q:"Trouvez et corrigez la faute : 'Il garantie le bon fonctionnement des juridictions.'",t:'q',o:['garantie → garantit','fonctionnement → fonctionnements','bon → bonne','Il → Elle'],a:'garantie → garantit',r:"Présent 3e pers. sing. de 'garantir' = garantit (sans e final)"},
+  {q:"Trouvez et corrigez la faute : 'les ressources budgétères du ministère'",t:'q',o:['budgétères → budgétaires','ressources → ressource','les → des','ministère → ministères'],a:'budgétères → budgétaires',r:"L'adjectif correct est 'budgétaires' (pas 'budgétères')"},
+  {q:"Trouvez et corrigez la faute : 'il gère les moyens humains et matérielles'",t:'q',o:['matérielles → matériels','humains → humaines','gère → gèrent','les → des'],a:'matérielles → matériels',r:"'Les moyens' est masculin pluriel → matériels (masc. pl.)"},
+  {q:"Trouvez et corrigez la faute : 'des personnes qui lui sont confié par l'autorité judiciaire'",t:'q',o:['confié → confiées','personnes → personne','lui → leur','sont → est'],a:'confié → confiées',r:"Accord avec 'personnes' (fém. pl.) → confiées"},
+  {q:"Trouvez et corrigez la faute : 'Il défini et met en œuvre les politiques publiques.'",t:'q',o:['défini → définit','met → mets','Il → Ils','œuvre → oeuvre'],a:'défini → définit',r:"Présent 3e pers. sing. de 'définir' = définit (avec t final)"},
+  {q:"Trouvez et corrigez la faute : 'des régions académiques qui comprenne plusieurs académies'",t:'q',o:['comprenne → comprennent','académiques → académique','régions → région','des → les'],a:'comprenne → comprennent',r:"Sujet 'régions académiques' (pl.) → comprennent"},
+  {q:"Trouvez et corrigez la faute : 'il dispose de pouvoirs propre'",t:'q',o:['propre → propres','pouvoirs → pouvoir','dispose → disposent','de → des'],a:'propre → propres',r:"Accord avec 'pouvoirs' (masc. pl.) → propres"},
+  {q:"Trouvez et corrigez la faute : 'pour les régions comportants plusieurs académies'",t:'q',o:['comportants → comportant','régions → région','plusieurs → quelques','les → des'],a:'comportants → comportant',r:"Participe présent = toujours invariable → comportant (sans s)"},
+  {q:"Trouvez et corrigez la faute : 'avec l'appuie des autres recteurs d'académie'",t:'q',o:["appuie → appui",'autres → autre','avec → grâce à','recteurs → recteur'],a:"appuie → appui",r:"'Appui' (nom masc.) ne prend pas de e — 'appuie' = conjugaison du verbe"},
+  {q:"Trouvez et corrigez la faute : 'dans les chants de compétences partagés avec la collectivité'",t:'q',o:['chants → champs','partagés → partagées','compétences → compétence','dans → en'],a:'chants → champs',r:"'Champs de compétences' = domaines. 'Chants' = ce qu'on chante"},
+  {q:"Trouvez et corrigez la faute : 'la collectivité régional ou le préfet de région'",t:'q',o:['régional → régionale','collectivité → collectivités','la → le','ou → et'],a:'régional → régionale',r:"'Collectivité' est féminin → adjectif accordé → régionale"},
+  {q:"Trouvez et corrigez la faute : 'Les femmes avait levées la tête vers lui.'",t:'q',o:['avait → avaient','levées → levé','tête → têtes','lui → eux'],a:'avait → avaient',r:"Sujet 'les femmes' (pl.) → avaient (imparfait 3e pers. pl.)"},
+  {q:"Trouvez et corrigez la faute : 'trois petite ouvrières'",t:'q',o:['petite → petites','trois → troisième','ouvrières → ouvrière','une → des'],a:'petite → petites',r:"Accord avec le nom au pluriel → petites"},
+  {q:"Trouvez et corrigez la faute : 'une maîtresse de musique entre deux âge'",t:'q',o:['âge → âges','maîtresse → maître','entre → parmi','deux → quelques'],a:'âge → âges',r:"Expression figée 'entre deux âges' → âges au pluriel"},
+  {q:"Trouvez et corrigez la faute : 'coiffée d'un chaperon toujours poussiéreu'",t:'q',o:['poussiéreu → poussiéreux','coiffée → coiffé','chaperon → chaperons','toujours → parfois'],a:'poussiéreu → poussiéreux',r:"L'adjectif masculin correct est 'poussiéreux' (avec x)"},
+  {q:"Trouvez et corrigez LA PREMIÈRE faute : 'vêtut d'une robe toujours de traver'",t:'q',o:['vêtut → vêtue','traver → travers','robe → robes','toujours → souvent'],a:'vêtut → vêtue',r:"'Vêtue' s'accorde avec le sujet féminin (pas de t final)"},
+  {q:"Trouvez et corrigez LA DEUXIÈME faute : 'vêtue d'une robe toujours de traver'",t:'q',o:['traver → travers','vêtue → vêtut','robe → robes','toujours → souvent'],a:'traver → travers',r:"'De travers' = adverbe figé avec s final"}
+],
+mq:[
+  {q:"Suite logique : 2 ; 5 ; 8 ; 11 ; 14 ; ___",t:'q',o:['16','17','28','15'],a:'17',r:"+3 à chaque fois : 14 + 3 = 17"},
+  {q:"f(x) = 2x² + 3x - 2. Pour x = 3, quel est le résultat ?",t:'q',o:['25','7','29','18'],a:'25',r:"2×(3²) + 3×3 - 2 = 18 + 9 - 2 = 25"},
+  {q:"9x² - 24x + 16 est égal à :",t:'q',o:['(3x+4)²','(3x-4)²','(9x-8)²','(3x-2)²'],a:'(3x-4)²',r:"(a-b)² = a²-2ab+b² avec a=3x et b=4 → (3x-4)²"},
+  {q:"Dans la série [2;3;5;7;13;17;19], quel nombre manque ?",t:'q',o:['23','11','15','9'],a:'11',r:"Ce sont les nombres premiers : 2,3,5,7,11,13,17,19"},
+  {q:"Article à 19€, -20% puis +20%. Prix final ?",t:'q',o:['19€','19,20€','18,24€','20€'],a:'18,24€',r:"19 × 0,8 = 15,2 ; 15,2 × 1,2 = 18,24€ (attention : pas neutre !)"},
+  {q:"10 élèves sur 25 représentent :",t:'q',o:['40%','33%','25%','50%'],a:'40%',r:"10 ÷ 25 × 100 = 40%"},
+  {q:"5x - (4x + 8) = 3. x = ?",t:'q',o:['11','-11','3','8'],a:'11',r:"5x - 4x - 8 = 3 → x - 8 = 3 → x = 11"},
+  {q:"Superficie d'un carré de 5 cm de côté :",t:'q',o:['10 cm²','25 cm²','15 cm²','20 cm²'],a:'25 cm²',r:"Aire = côté² = 5² = 25 cm²"},
+  {q:"Train à 120 km/h parcourant 70 km. Durée ?",t:'q',o:['40 min','35 min','30 min','45 min'],a:'35 min',r:"t = d/v = 70/120 h = 0,583 h ≈ 35 min"},
+  {q:"4x² + 12x + 9 est égal à :",t:'q',o:['(4x+3)²','(2x+2)²','(2x+3)²','(4x-3)²'],a:'(2x+3)²',r:"(2x+3)² = 4x² + 12x + 9 ✓"},
+  {q:"Article de 320€ → 256€. Réduction de :",t:'q',o:['64%','32%','20%','25%'],a:'20%',r:"(320-256)/320 × 100 = 64/320 × 100 = 20%"},
+  {q:"Suite logique : 2 ; 4 ; 8 ; 16 ; 32 ; ___",t:'q',o:['48','64','36','40'],a:'64',r:"×2 à chaque fois : 32 × 2 = 64"},
+  {q:"2 × (6 - 3) + 1 = ?",t:'q',o:['7','18','10','9'],a:'7',r:"Priorité des opérations : 6-3=3 ; 2×3=6 ; 6+1=7"},
+  {q:"6x - 1 = 4x + 3. x = ?",t:'q',o:['4','3','2','1'],a:'2',r:"6x - 4x = 3 + 1 → 2x = 4 → x = 2"},
+  {q:"200 inscrits, augmentation de 10%. Nouveau nombre ?",t:'q',o:['210','220','211','222'],a:'220',r:"200 × 1,10 = 220"},
+  {q:"Programme : choisir 7 → ×7 → -4 → +18. Résultat ?",t:'q',o:['49','63','67','35'],a:'63',r:"7×7=49 ; 49-4=45 ; 45+18=63"},
+  {q:"34 élèves, 15 garçons. % de filles (arrondi) ?",t:'q',o:['56%','44%','49%','59%'],a:'56%',r:"Filles = 34-15=19 ; 19/34×100 ≈ 55,9% → arrondi à 56%"},
+  {q:"Manteau soldé à -40%, vendu 120€. Prix initial ?",t:'q',o:['160€','200€','220€','180€'],a:'200€',r:"120 = prix × 0,60 → prix = 120/0,60 = 200€"},
+  {q:"Marathon couru en 4h28min. Durée en secondes ?",t:'q',o:['1920','16080','28400','15000'],a:'16080',r:"4×3600 + 28×60 = 14400 + 1680 = 16 080 secondes"},
+  {q:"Périmètre d'un cercle de 6 cm de diamètre ?",t:'q',o:['37,68 cm','12 cm','18,84 cm','6,28 cm'],a:'18,84 cm',r:"P = π × d = 3,14159 × 6 ≈ 18,84 cm"},
+  {q:"Triangle rectangle : angle A=90°, angle B=15°. Angle C = ?",t:'q',o:['75°','90°','105°','60°'],a:'75°',r:"Somme des angles = 180° → C = 180 - 90 - 15 = 75°"},
+  {q:"15 = -3 × x. Valeur de x ?",t:'q',o:['-5','5','-15','15'],a:'-5',r:"x = 15 ÷ (-3) = -5"},
+  {q:"1 kg de fruits = 2,99€. Prix de 2,5 kg ?",t:'q',o:['7,4€','7,5€','7,475€','7,25€'],a:'7,475€',r:"2,99 × 2,5 = 7,475€"},
+  {q:"Division euclidienne de 127 par 31 ?",t:'q',o:['Quotient 4','Quotient 4,096','Quotient 4, reste 3','Quotient 5, reste 2'],a:'Quotient 4, reste 3',r:"31 × 4 = 124 ; 127 - 124 = 3 → quotient 4, reste 3"},
+  {q:"8,90x = 7,50x + 14. Valeur de x ?",t:'q',o:['10','14','8','12'],a:'10',r:"8,90x - 7,50x = 14 → 1,40x = 14 → x = 10"}
+],
+mc:[
+  {q:"Budget 36 000€ réduit de 8%. Nouveau montant ?",t:'f',a:'33120',r:"36 000 × 0,92 = 33 120€"},
+  {q:"Article passe de 45€ à 54€. Hausse en % ?",t:'f',a:'20',r:"(54-45)/45 × 100 = 9/45 × 100 = 20%"},
+  {q:"Commande 12 000€ HT, TVA 20%. Montant TTC ?",t:'f',a:'14400',r:"12 000 × 1,20 = 14 400€"},
+  {q:"Budget total 45 000€. Part informatique = 80%. Montant informatique ?",t:'f',a:'36000',r:"45 000 × 0,80 = 36 000€"},
+  {q:"Sur 36 000€ d'informatique, 1/3 pour les ordinateurs. Montant ?",t:'f',a:'12000',r:"36 000 ÷ 3 = 12 000€"},
+  {q:"5 douzaines de stylos à 2,50€ l'unité. Total ?",t:'f',a:'150',r:"5 × 12 × 2,50 = 150€"},
+  {q:"Frais total 9 000€ : papier 2 600€ + petits matériels 1 200€ + graphiques 2 050€. Montant 'Divers' ?",t:'f',a:'3150',r:"9 000 - 2 600 - 1 200 - 2 050 = 3 150€"},
+  {q:"3 150€ représente quel pourcentage de 9 000€ ?",t:'f',a:'35',r:"3 150 / 9 000 × 100 = 35%"},
+  {q:"Budget 9 000€ réduit de 5%. Nouveau budget ?",t:'f',a:'8550',r:"9 000 × 0,95 = 8 550€"},
+  {q:"Commande 45 000€ TTC, TVA 20%. Montant HT ?",t:'f',a:'37500',r:"45 000 ÷ 1,20 = 37 500€"},
+  {q:"Ecocartidge : 50 000€ - 12% remise + 80€ livraison. Total ?",t:'f',a:'44080',r:"50 000 × 0,88 = 44 000 + 80 = 44 080€"},
+  {q:"Buroplus : 48 000€ - 7% (port inclus). Total ?",t:'f',a:'44640',r:"48 000 × 0,93 = 44 640€"},
+  {q:"Location camion 120€/jour × 3,5 jours (coût exact) ?",t:'f',a:'420',r:"120 × 3,5 = 420€"},
+  {q:"Même location, toute journée entamée due. 3,5 jours facturés combien ?",t:'f',a:'480',r:"3,5 jours → 4 jours facturés → 120 × 4 = 480€"},
+  {q:"Déménagement : 8h15 → 17h10. Durée exacte ?",t:'f',a:'8h55',r:"17h10 - 8h15 = 8h55"},
+  {q:"Volume d'un carton 50 cm × 30 cm × 25 cm ?",t:'f',a:'37500',r:"50 × 30 × 25 = 37 500 cm³"},
+  {q:"37 500 cm³ convertis en m³ ?",t:'f',a:'0.0375',r:"37 500 ÷ 1 000 000 = 0,0375 m³"},
+  {q:"Menu cafétéria 8,90€ × 3 jours/semaine × 4 semaines ?",t:'f',a:'106.8',r:"8,90 × 12 = 106,80€"},
+  {q:"Carte fidélité 14€ + menu 7,50€ × 12 repas. Coût total ?",t:'f',a:'104',r:"14 + (7,50 × 12) = 14 + 90 = 104€"},
+  {q:"75 livres sterling × 1,14€/£. Montant en euros ?",t:'f',a:'85.5',r:"75 × 1,14 = 85,50€"},
+  {q:"Plan : 17 cm × échelle 1 cm = 250 m. Distance réelle en mètres ?",t:'f',a:'4250',r:"17 × 250 = 4 250 m"},
+  {q:"Flèche à 90 m, maquette au 1/300e. Hauteur sur la maquette en cm ?",t:'f',a:'30',r:"90 m = 9 000 cm ÷ 300 = 30 cm"},
+  {q:"Vol Paris 6h30 → Berlin 8h15. Durée du vol ?",t:'f',a:'1h45',r:"8h15 - 6h30 = 1h45"},
+  {q:"Escale Berlin : arrivée 8h15, départ 13h10. Durée de la pause ?",t:'f',a:'4h55',r:"13h10 - 8h15 = 4h55"},
+  {q:"Budget 600€/jour × 7 jours en DKK (1 DKK = 0,13€). Résultat arrondi ?",t:'f',a:'32308',r:"4 200€ ÷ 0,13 ≈ 32 308 DKK"},
+  {q:"Photocopieuse 960€ TTC, TVA 20%. Prix HT ?",t:'f',a:'800',r:"960 ÷ 1,20 = 800€"},
+  {q:"Surface des 4 murs d'une pièce 5m × 7m × 2,20m (sans plafond) ?",t:'f',a:'52.8',r:"Périmètre × hauteur = 2×(5+7) × 2,20 = 24 × 2,20 = 52,8 m²"},
+  {q:"Surface du plafond d'une pièce 5m × 7m ?",t:'f',a:'35',r:"5 × 7 = 35 m²"},
+  {q:"Base horaire 36h/semaine, 5 jours. Heures par jour (en h et min) ?",t:'f',a:'7h12',r:"36 ÷ 5 = 7,2 h = 7h12"},
+  {q:"Salaire net 396€/semaine × 4,5 semaines ?",t:'f',a:'1782',r:"396 × 4,5 = 1 782€"}
+],
+mp:[
+  {q:"Prix HT = 500€, TVA = 20%. Prix TTC ?",t:'f',a:'600',r:"500 × 1,20 = 600€"},
+  {q:"Prix TTC = 720€, TVA = 20%. Prix HT ?",t:'f',a:'600',r:"720 ÷ 1,20 = 600€"},
+  {q:"Réduction 15% puis geste commercial 5% sur 10 000€. Montant final ?",t:'f',a:'8075',r:"10 000 × 0,85 = 8 500 ; 8 500 × 0,95 = 8 075€"},
+  {q:"Salaire 1 800€, hausse de 3%. Nouveau salaire ?",t:'f',a:'1854',r:"1 800 × 1,03 = 1 854€"},
+  {q:"35% de 80 207 kWh (luminaires). Consommation des luminaires ?",t:'f',a:'28072',r:"80 207 × 0,35 ≈ 28 072 kWh"},
+  {q:"LED économisent 60% sur 28 072 kWh. Économie en kWh ?",t:'f',a:'16843',r:"28 072 × 0,60 ≈ 16 843 kWh"},
+  {q:"+3% de consommation sur 80 207 kWh. Nouveau total ?",t:'f',a:'82613',r:"80 207 × 1,03 ≈ 82 613 kWh"},
+  {q:"Remise de 20% sur 50€. Prix après remise ?",t:'f',a:'40',r:"50 × 0,80 = 40€"},
+  {q:"Article soldé -40%, vendu 120€. Prix initial ?",t:'f',a:'200',r:"120 ÷ 0,60 = 200€"},
+  {q:"Salaire horaire 11€, journée 7h12. Salaire journalier ?",t:'f',a:'79.2',r:"11 × 7,2 = 79,20€"},
+  {q:"Indemnité congés = 6 jours × 7h12 × 11€/h ?",t:'f',a:'475.2',r:"6 × 7,2 × 11 = 475,20€"},
+  {q:"Peinture : 85 m² × 0,1 L/m² × 2 couches. Nombre de litres ?",t:'f',a:'17',r:"85 × 0,1 × 2 = 17 L"},
+  {q:"Peintre : 7h × 46€/h HT. Coût HT ?",t:'f',a:'322',r:"7 × 46 = 322€"},
+  {q:"322€ HT + TVA 20%. Coût TTC ?",t:'f',a:'386.4',r:"322 × 1,20 = 386,40€"},
+  {q:"+20% puis +20% sur un prix. Augmentation totale en % ?",t:'f',a:'44',r:"1,20 × 1,20 = 1,44 → +44% (et non +40%)"},
+  {q:"Taux de variation : de 80 à 100. En % ?",t:'f',a:'25',r:"(100-80)/80 × 100 = 25%"},
+  {q:"Prix initial 250€, remise de 30€. Taux de remise en % ?",t:'f',a:'12',r:"30/250 × 100 = 12%"},
+  {q:"12 000€ ordinateurs sur budget total 45 000€. Pourcentage ?",t:'f',a:'26.67',r:"12 000/45 000 × 100 ≈ 26,67%"},
+  {q:"80 207 kWh annuels. Consommation mensuelle moyenne ?",t:'f',a:'6684',r:"80 207 ÷ 12 ≈ 6 684 kWh"},
+  {q:"Article passe de 150€ à 120€. Baisse en % ?",t:'f',a:'20',r:"(150-120)/150 × 100 = 20%"},
+  {q:"TVA collectée sur vente TTC de 2 400€ (TVA 20%) ?",t:'f',a:'400',r:"HT = 2 400/1,20 = 2 000€ ; TVA = 2 400 - 2 000 = 400€"},
+  {q:"+15% sur 60 000€. Nouveau budget ?",t:'f',a:'69000',r:"60 000 × 1,15 = 69 000€"},
+  {q:"Deux remises successives de 10% sur 10 000€. Total des remises économisées ?",t:'f',a:'1900',r:"10 000×0,9=9 000 (remise1=1000) ; 9 000×0,9=8 100 (remise2=900) → total = 1 900€"},
+  {q:"3 150€ dans 9 000€ exprimé en % ?",t:'f',a:'35',r:"3 150 ÷ 9 000 × 100 = 35%"},
+  {q:"+15% sur prix kWh de 0,12921€. Nouveau prix arrondi à 4 décimales ?",t:'f',a:'0.1486',r:"0,12921 × 1,15 ≈ 0,1486€/kWh"}
+]
+};
+
+let theme='pp',idx=0,answered=false,score=0,total=0,streak=0,queue=[];
+
+function shuffle(a){const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]]}return b}
+
+function checkAnswer(userRaw, correctRaw){
+  const userTrimmed = userRaw.trim();
+  if(!userTrimmed) return false;
+
+  const accepted = correctRaw.split('|').map(a => a.trim());
+
+  for(const correct of accepted){
+    // Test numérique pur : extraire le nombre et comparer
+    const correctOnlyNum = correct.replace(/\s/g,'').replace(',','.');
+    const userOnlyNum = userTrimmed.replace(/\s/g,'').replace(',','.');
+    const cn = parseFloat(correctOnlyNum);
+    const un = parseFloat(userOnlyNum);
+
+    // Si la réponse correcte EST un nombre (rien d'autre)
+    if(!isNaN(cn) && /^-?[0-9]+([.,][0-9]+)?$/.test(correctOnlyNum)){
+      if(!isNaN(un) && Math.abs(cn - un) < 0.02) return true;
+    } else {
+      // Comparaison textuelle normalisée (accents + casse uniquement)
+      if(norm(correct) === norm(userTrimmed)) return true;
+    }
+  }
+  return false;
+}
+
+function initQ(){queue=shuffle([...Q[theme]]);idx=0;answered=false}
+
+function upUI(){
+  document.getElementById('sp').textContent='✓ '+score+' / '+total;
+  document.getElementById('sk').textContent='🔥 '+streak;
+  document.getElementById('pb').style.width=(queue.length?(idx/queue.length*100):0)+'%';
+}
+
+function renderTabs(){
+  document.getElementById('th').innerHTML=TH.map(t=>`<button class="tbtn${t.id===theme?' active':''}" onclick="setTheme('${t.id}')">${t.l}</button>`).join('');
+}
+
+function setTheme(t){theme=t;initQ();renderTabs();render()}
+
+function render(){
+  upUI();
+  const main=document.getElementById('main');
+  if(idx>=queue.length){
+    const pct=total>0?Math.round(score/total*100):0;
+    const em=pct>=80?'🎉':pct>=60?'👍':'💪';
+    main.innerHTML=`<div class="card"><div class="qm">${em} Thème terminé !</div><div class="rg"><div class="st"><div class="sn">${score}</div><div class="sl">Bonnes réponses</div></div><div class="st"><div class="sn">${total}</div><div class="sl">Questions</div></div><div class="st"><div class="sn">${pct}%</div><div class="sl">Réussite</div></div></div><div class="br"><button class="btn p" onclick="restart()">↺ Recommencer</button><button class="btn" onclick="nextTA()">Thème suivant →</button></div></div>`;
+    return;
+  }
+  const q=queue[idx];
+  const tn=TH.find(t=>t.id===theme).l;
+  let h=`<div class="card"><div class="qm">Question ${idx+1} / ${queue.length} — ${tn}</div><div class="qt">${q.q}</div>`;
+  if(q.t==='q'){
+    h+=`<div class="opts">`+q.o.map((o,i)=>`<button class="opt" id="o${i}" onclick="cQ(this,'${o.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">${o}</button>`).join('')+`</div>`;
+  } else {
+    h+=`<div class="fr"><input type="text" id="ai" placeholder="Votre réponse..." autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')cF()"/><button class="btn p" onclick="cF()">Valider</button></div>`;
+  }
+  h+=`<div id="fb" class="fb"></div><div class="br" id="nw" style="display:none"><button class="btn p" onclick="nx()">Question suivante →</button></div></div>`;
+  main.innerHTML=h;
+  if(q.t==='f') setTimeout(()=>{const i=document.getElementById('ai');if(i)i.focus()},80);
+}
+
+function cQ(btn,val){
+  if(answered)return;
+  answered=true;total++;
+  const q=queue[idx];
+  const ok=(val===q.a);
+  if(ok){score++;streak++;btn.className='opt ok';}
+  else{streak=0;btn.className='opt ko';document.querySelectorAll('.opt').forEach(b=>{if(b.textContent===q.a)b.className='opt ok'});}
+  document.querySelectorAll('.opt').forEach(b=>b.disabled=true);
+  showFB(ok,q,null);
+}
+
+function cF(){
+  if(answered)return;
+  const inp=document.getElementById('ai');
+  if(!inp||!inp.value.trim())return;
+  answered=true;total++;
+  const q=queue[idx];
+  const uv=inp.value;
+  const ok=checkAnswer(uv, q.a);
+  inp.disabled=true;
+  inp.className=ok?'ok':'ko';
+  if(ok){score++;streak++;}else{streak=0;}
+  showFB(ok,q,uv);
+}
+
+function showFB(ok,q,uv){
+  const fb=document.getElementById('fb');
+  fb.style.display='block';
+  fb.className='fb '+(ok?'ok':'ko');
+  let t=ok
+    ?'<strong>✓ Correct !</strong>'
+    :`<strong>✗ Incorrect.</strong>${uv?` Votre réponse : <em>${uv.trim()}</em>. `:''} Réponse attendue : <strong>${q.a}</strong>.`;
+  t+=`<span class="rl">📌 ${q.r}</span>`;
+  fb.innerHTML=t;
+  document.getElementById('nw').style.display='flex';
+  upUI();
+}
+
+function nx(){idx++;answered=false;render()}
+function restart(){score=0;total=0;streak=0;initQ();render()}
+function nextTA(){const i=TH.findIndex(t=>t.id===theme);setTheme(TH[(i+1)%TH.length].id)}
+
+initQ();renderTabs();render();
+</script>
+</body>
+</html>
